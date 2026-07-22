@@ -19,17 +19,15 @@ def send_otp(receiver_email, otp):
     if not EMAIL or not EMAIL_PASSWORD:
         raise Exception("EMAIL or EMAIL_PASSWORD missing in .env")
 
-    print("Sending mail from:", EMAIL)
+    print("SMTP Username:", EMAIL)
     print("Password length:", len(EMAIL_PASSWORD))
 
     msg = EmailMessage()
-
     msg["Subject"] = "Password Reset OTP"
-    msg["From"] = EMAIL
+    msg["From"] = "sreelathapachcha225@gmail.com"
     msg["To"] = receiver_email
 
-    msg.set_content(
-        f"""
+    msg.set_content(f"""
 Hello,
 
 Your OTP is: {otp}
@@ -37,12 +35,10 @@ Your OTP is: {otp}
 Use this OTP to reset your password.
 
 Thank You.
-"""
-    )
+""")
 
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-
+        server = smtplib.SMTP("smtp-relay.brevo.com", 587)
         server.ehlo()
         server.starttls()
         server.ehlo()
@@ -53,11 +49,9 @@ Thank You.
         )
 
         server.send_message(msg)
-
         server.quit()
 
         print("OTP Sent Successfully")
-
         return True
 
     except Exception as e:
