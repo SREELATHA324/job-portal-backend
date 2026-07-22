@@ -1,4 +1,7 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
 from app.schemas.user import (
     UserRegister,
@@ -18,6 +21,8 @@ router = APIRouter(
 
 users = []
 otp_store = {}
+class GoogleLoginRequest(BaseModel):
+    token: str
 
 
 @router.post("/register")
@@ -34,6 +39,61 @@ def register(user: UserRegister):
         "access_token": token,
         "token_type": "bearer"
     }
+
+@router.post("/google-login")
+def google_login(data: GoogleLoginRequest):
+
+    try:
+        google_user = id_token.verify_oauth2_token(
+            data.token,
+            requests.Request(),
+            "536124478145-pjfn02pnl37peve988396botj8sogqkr.apps.googleusercontent.com"
+        )
+
+        email = google_user.get("email")
+        name = google_user.get("name")
+
+        # Existing user check
+        existing_user = None
+
+        for u in users:
+            if u.email.lower() == email.lower():
+                existing_user = u
+                break
+
+        # New Google user create
+        if not existing_user:
+            from app.schemas.user import UserRegister
+
+            new_user = UserRegister(
+                name=name,
+                email=email,
+                password="google_login"
+            )
+
+            users.append(new_user)
+
+        token = create_access_token({
+            "sub": email
+        })
+
+        return {
+            "message": "Google Login Successful",
+            "access_token": token,
+            "token_type": "bearer",
+            "user": {
+                "name": name,
+                "email": email,
+                "role": "user"
+            }
+        }
+
+    except Exception as e:
+        print("GOOGLE ERROR:", e)
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Google Token"
+        )
 
 
 @router.post("/login")
@@ -75,14 +135,6 @@ def forgot_password(payload: ForgotPasswordRequest):
             status_code=404,
             detail="Email not found"
         )
-
-    otp = generate_otp()
-
-    print("Email:", email)
-    print("Users:", users)
-    print("OTP:", otp)
-
-    otp_store[email] = otp
 
     otp = generate_otp()
 
