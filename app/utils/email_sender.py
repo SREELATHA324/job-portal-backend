@@ -1,13 +1,11 @@
 import os
 import random
-import smtplib
-from email.message import EmailMessage
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-EMAIL = os.getenv("EMAIL")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 
 
 def generate_otp():
@@ -15,46 +13,42 @@ def generate_otp():
 
 
 def send_otp(receiver_email, otp):
+    if not BREVO_API_KEY:
+        raise Exception("BREVO_API_KEY missing")
 
-    if not EMAIL or not EMAIL_PASSWORD:
-        raise Exception("EMAIL or EMAIL_PASSWORD missing")
+    url = "https://api.brevo.com/v3/smtp/email"
 
-    msg = EmailMessage()
-    msg["Subject"] = "Password Reset OTP"
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
 
-    # Brevo lo verified sender email
-    msg["From"] = "sreelathapachcha225@gmail.com"
-
-    msg["To"] = receiver_email
-
-    msg.set_content(f"""
-Hello,
+    payload = {
+        "sender": {
+            "name": "Job Portal",
+            "email": "sreelathapachcha225@gmail.com"
+        },
+        "to": [
+            {
+                "email": receiver_email
+            }
+        ],
+        "subject": "Password Reset OTP",
+        "textContent": f"""Hello,
 
 Your OTP is: {otp}
 
 Use this OTP to reset your password.
 
-Thank You.
-""")
+Thank You."""
+    }
 
-    try:
-        server = smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=30)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
+    response = requests.post(url, json=payload, headers=headers, timeout=30)
 
-        # Brevo SMTP Login & SMTP Key
-        server.login(
-            EMAIL.strip(),
-            EMAIL_PASSWORD.strip()
-        )
+    print("Brevo Response:", response.status_code, response.text)
 
-        server.send_message(msg)
-        server.quit()
+    if response.status_code not in [200, 201]:
+        raise Exception(f"Brevo Error: {response.text}")
 
-        print("OTP Sent Successfully")
-        return True
-
-    except Exception as e:
-        print("SMTP ERROR:", e)
-        raise
+    return True
