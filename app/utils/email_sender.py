@@ -17,14 +17,14 @@ def generate_otp():
 def send_otp(receiver_email, otp):
 
     if not EMAIL or not EMAIL_PASSWORD:
-        raise Exception("EMAIL or EMAIL_PASSWORD missing in .env")
-
-    print("SMTP Username:", EMAIL)
-    print("Password length:", len(EMAIL_PASSWORD))
+        raise Exception("EMAIL or EMAIL_PASSWORD missing")
 
     msg = EmailMessage()
     msg["Subject"] = "Password Reset OTP"
+
+    # Brevo lo verified sender email
     msg["From"] = "sreelathapachcha225@gmail.com"
+
     msg["To"] = receiver_email
 
     msg.set_content(f"""
@@ -38,11 +38,12 @@ Thank You.
 """)
 
     try:
-        server = smtplib.SMTP("smtp-relay.brevo.com", 587)
+        server = smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=30)
         server.ehlo()
         server.starttls()
         server.ehlo()
 
+        # Brevo SMTP Login & SMTP Key
         server.login(
             EMAIL.strip(),
             EMAIL_PASSWORD.strip()
@@ -56,4 +57,4 @@ Thank You.
 
     except Exception as e:
         print("SMTP ERROR:", e)
-        raise Exception(str(e))
+        raise
